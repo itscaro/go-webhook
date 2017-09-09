@@ -1,0 +1,12 @@
+version: '3.3'
+
+services:
+  app:
+    image: golang
+    ports:
+      - 8080:8080
+    volumes:
+      - .:/go/src/app
+      - ./run.sh:/run.sh:ro
+    working_dir: /go/src/app
+    command: sh /run.sh

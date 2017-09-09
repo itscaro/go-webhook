@@ -1,21 +1,30 @@
-FROM golang:1.8.3
+# Building stage
+
+FROM golang as builder
 
 WORKDIR /go/src/github.com/itscaro/webhook
 COPY . .
 RUN go get -d -v
 
+RUN echo "Done"
+
 RUN GIT_COMMIT=$(git rev-list -1 HEAD) \
- && GOARCH=arm GOARM=6 CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook-armhf . \
  && CGO_ENABLED=0 GOOS=darwin go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook-darwin \
- && CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook .
+ && CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook . \
+ && CGO_ENABLED=0 GOOS=windows go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook.exe . \
+ && GOARCH=arm GOARM=6 CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook-armhf . \
+ && echo "Done"
+
+# Packaging stage
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 
 WORKDIR /root/
 
-COPY --from=0 /go/src/github.com/itscaro/webhook/webhook    .
-COPY --from=0 /go/src/github.com/itscaro/webhook/webhook-darwin    .
-COPY --from=0 /go/src/github.com/itscaro/webhook/webhook-armhf    .
+COPY --from=builder /go/src/github.com/itscaro/webhook/webhook            build/
+COPY --from=builder /go/src/github.com/itscaro/webhook/webhook.exe        build/
+COPY --from=builder /go/src/github.com/itscaro/webhook/webhook-darwin     build/
+COPY --from=builder /go/src/github.com/itscaro/webhook/webhook-armhf      build/
 
 CMD ["./webhook"]
