@@ -9,6 +9,8 @@ import (
 
 	"strings"
 
+	"runtime"
+
 	"github.com/gin-gonic/gin"
 	"github.com/itscaro/go-tools/upnp"
 	"github.com/joho/godotenv"
@@ -29,6 +31,8 @@ type JsonResponse struct {
 }
 
 func init() {
+	fmt.Printf("Version %s - Built at %s\n", GitCommit, BuildDatetime)
+
 	err := godotenv.Load()
 	if err == nil {
 		fmt.Println(".env file loadded")
@@ -37,10 +41,13 @@ func init() {
 			gin.SetMode(os.Getenv(gin.ENV_GIN_MODE))
 		}
 	}
+
+	if runtime.GOOS == "linux" {
+		_ = os.Mkdir("./hook", os.FileMode(0755))
+	}
 }
 
 func main() {
-	fmt.Printf("Version %s - Built at %s\n", GitCommit, BuildDatetime)
 	fmt.Println("Starting...")
 	f, err := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
@@ -90,13 +97,21 @@ func main() {
 
 	webhook := router.Group("/webhook")
 	{
-		webhook.GET("/:name", webhookFunc)
-		webhook.POST("/:name", webhookFunc)
-		webhook.PUT("/:name", webhookFunc)
-		webhook.DELETE("/:name", webhookFunc)
-		webhook.PATCH("/:name", webhookFunc)
-		webhook.HEAD("/:name", webhookFunc)
-		webhook.OPTIONS("/:name", webhookFunc)
+		webhook.GET("/", webhookFunc)
+		webhook.POST("/", webhookFunc)
+		webhook.PUT("/", webhookFunc)
+		webhook.DELETE("/", webhookFunc)
+		webhook.PATCH("/", webhookFunc)
+		webhook.HEAD("/", webhookFunc)
+		webhook.OPTIONS("/", webhookFunc)
+
+		webhook.GET("/:name", webhookByPluginFunc)
+		webhook.POST("/:name", webhookByPluginFunc)
+		webhook.PUT("/:name", webhookByPluginFunc)
+		webhook.DELETE("/:name", webhookByPluginFunc)
+		webhook.PATCH("/:name", webhookByPluginFunc)
+		webhook.HEAD("/:name", webhookByPluginFunc)
+		webhook.OPTIONS("/:name", webhookByPluginFunc)
 	}
 
 	admin := router.Group("/admin")
@@ -129,7 +144,28 @@ func clearHooksFunc(c *gin.Context) {
 	})
 }
 
+// webhookFunc is a static hook
 func webhookFunc(c *gin.Context) {
+	// Always send back response
+	defer func() {
+		if r := recover(); r != nil {
+			c.JSON(http.StatusInternalServerError, JsonResponse{
+				Message: fmt.Sprintf("Internal Error: %+v", r),
+			})
+		}
+	}()
+
+	if rawData, err := c.GetRawData(); err == nil {
+		c.JSON(http.StatusOK, rawData)
+	} else {
+		c.JSON(http.StatusInternalServerError, JsonResponse{
+			Message: err.Error(),
+		})
+	}
+}
+
+// webhookByPluginFunc uses dynamic plugin system
+func webhookByPluginFunc(c *gin.Context) {
 	// Always send back response
 	defer func() {
 		if r := recover(); r != nil {
@@ -141,16 +177,20 @@ func webhookFunc(c *gin.Context) {
 
 	hookName := c.Param("name")
 	log.Printf("Hook name: %s\n", hookName)
-	rawData, _ := c.GetRawData()
-
-	if h, err := getHook(hookName); err == nil {
-		if h == nil {
-			c.JSON(http.StatusNotFound, JsonResponse{
-				Message: fmt.Sprintf("The hook '%s' does not exist", hookName),
-			})
+	if rawData, err := c.GetRawData(); err == nil {
+		if h, err := getHook(hookName); err == nil {
+			if h == nil {
+				c.JSON(http.StatusNotFound, JsonResponse{
+					Message: fmt.Sprintf("The hook '%s' does not exist", hookName),
+				})
+			} else {
+				log.Printf("Hook to use: %v", &h)
+				c.JSON(http.StatusOK, h.Exec(rawData))
+			}
 		} else {
-			log.Printf("Hook to use: %v", &h)
-			c.JSON(http.StatusOK, h.Exec(rawData))
+			c.JSON(http.StatusInternalServerError, JsonResponse{
+				Message: err.Error(),
+			})
 		}
 	} else {
 		c.JSON(http.StatusInternalServerError, JsonResponse{
