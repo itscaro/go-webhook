@@ -9,10 +9,10 @@ RUN go get -d -v
 RUN echo "Done"
 
 RUN GIT_COMMIT=$(git rev-list -1 HEAD) \
- && CGO_ENABLED=0 GOOS=darwin go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook-darwin \
- && CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook . \
- && CGO_ENABLED=0 GOOS=windows go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook.exe . \
- && GOARCH=arm GOARM=6 CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT}" -a -installsuffix cgo -o webhook-armhf . \
+ && CGO_ENABLED=0 GOOS=darwin go build --ldflags "-X main.GitCommit=${GIT_COMMIT} -X main.BuildDatetime=`date -u +.%Y%m%d.%H%M`" -a -installsuffix cgo -o webhook-darwin \
+ && CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT} -X main.BuildDatetime=`date -u +.%Y%m%d.%H%M`" -a -installsuffix cgo -o webhook . \
+ && CGO_ENABLED=0 GOOS=windows go build --ldflags "-X main.GitCommit=${GIT_COMMIT} -X main.BuildDatetime=`date -u +.%Y%m%d.%H%M`" -a -installsuffix cgo -o webhook.exe . \
+ && GOARCH=arm GOARM=6 CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT} -X main.BuildDatetime=`date -u +.%Y%m%d.%H%M`" -a -installsuffix cgo -o webhook-armhf . \
  && echo "Done"
 
 # Packaging stage

@@ -14,6 +14,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var GitCommit string
+var BuildDatetime string
+
 var loadedHooks = make(map[string]Hook)
 
 type Hook interface {
@@ -37,6 +40,7 @@ func init() {
 }
 
 func main() {
+	fmt.Printf("Version %s - Built at %s\n", GitCommit, BuildDatetime)
 	fmt.Println("Starting...")
 	f, err := os.OpenFile("log.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
