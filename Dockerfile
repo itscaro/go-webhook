@@ -7,14 +7,13 @@ COPY . .
 
 RUN go get -d -v
 
-RUN GIT_COMMIT=$(git rev-list -1 HEAD) \
- && CGO_ENABLED=0 GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT} -X main.BuildDatetime=`date -u +%Y%m%d.%H%M`" -a -installsuffix cgo -o webhook . \
+RUN GIT_COMMIT=$(git describe --tags --exact-match $(git rev-parse HEAD) || echo 'dev')-$(git rev-list -1 HEAD) \
+ && GOOS=linux go build --ldflags "-X main.GitCommit=${GIT_COMMIT} -X main.BuildDatetime=`date -u +%Y%m%d.%H%M`" -a -installsuffix cgo -o webhook . \
  && echo "Done"
 
 # Packaging stage
 
-FROM alpine:latest
-RUN apk --no-cache add ca-certificates
+FROM debian:latest
 
 WORKDIR /root/
 

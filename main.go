@@ -176,7 +176,7 @@ func webhookByPluginFunc(c *gin.Context) {
 	}()
 
 	hookName := c.Param("name")
-	log.Printf("Hook name: %s\n", hookName)
+
 	if rawData, err := c.GetRawData(); err == nil {
 		if h, err := getHook(hookName); err == nil {
 			if h == nil {
@@ -200,11 +200,13 @@ func webhookByPluginFunc(c *gin.Context) {
 }
 
 func getHook(name string) (h Hook, err error) {
+	log.Printf("Hook name: %s\n", name)
+
 	if _, ok := loadedHooks[name]; ok {
 		return loadedHooks[name], nil
 	}
 
-	if p, err := plugin.Open("hook/" + name + ".so"); err == nil {
+	if p, err := plugin.Open("./hook/" + name + ".so"); err == nil {
 		symbol, err := p.Lookup(strings.Title(name))
 		if err != nil {
 			log.Println(err)
@@ -218,7 +220,7 @@ func getHook(name string) (h Hook, err error) {
 			return nil, fmt.Errorf("Error while executing the hook '%s'", name)
 		}
 	} else {
-		log.Println(err)
+		log.Println("Could not load plugin: " + err.Error())
 	}
 
 	return
