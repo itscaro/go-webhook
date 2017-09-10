@@ -2,3 +2,5 @@
 **/*.so
 vendor
 dist
+
+.idea/workspace.xml
