@@ -97,15 +97,27 @@ func main() {
 
 	admin := router.Group("/admin")
 	{
-		admin.DELETE("/hooks", clearHookFunc)
+		admin.GET("/hooks", getHooksFunc)
+		admin.DELETE("/hooks", clearHooksFunc)
 	}
 
 	fmt.Println("Ready for incoming requests")
 	router.Run()
 }
 
+// getHooksFunc get all loaded hook plugins
+func getHooksFunc(c *gin.Context) {
+	loadedHooksList := []string{}
+
+	for hookName := range loadedHooks {
+		loadedHooksList = append(loadedHooksList, hookName)
+	}
+
+	c.JSON(http.StatusOK, loadedHooksList)
+}
+
 // clearHookFunc clears all loaded hook plugins
-func clearHookFunc(c *gin.Context) {
+func clearHooksFunc(c *gin.Context) {
 	loadedHooks = make(map[string]Hook)
 
 	c.JSON(http.StatusOK, JsonResponse{
